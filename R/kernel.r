@@ -197,10 +197,42 @@ complete = function(request) {
     # good coding style for completions
     comps <- gsub('=$', ' = ', c.info$comps)
     
+    metadata <- namedlist()
+    for(x in c.info$comps) {
+        try({
+            obj <- get(x, envir=.GlobalEnv)
+            obj.class <- class(obj)
+            info <- ""
+            icon <- ""
+            css <- ""
+            if (is.function(obj)) {
+                info <- environmentName(environment(obj))
+                icon <- "cog"
+            } else if (is.vector(obj)) {
+                info <- paste(obj.class, "[", length(obj), "]", sep="")
+                icon <- "list-ol"
+            } else if (is.data.frame(obj) | is.matrix(obj)) {
+                info <- paste(obj.class, "[", nrow(obj), ",", ncol(obj), "]", sep="")
+                icon <- "table"
+            } else if (is.list(obj)) {
+                info <- paste(obj.class, "[", length(obj), "]", sep="")
+                icon <- "object-group"
+            } else if (file.exists(x)) {
+                info <- "file"
+                icon <- "file-o"
+            } else {
+                info <- obj.class
+                icon <- "question"
+            }
+            
+            metadata[[x]] <- list(icon=icon, css=css, info=info)
+        }, silent=TRUE)
+    }
+    
     start_position <- chars_before_line + c.info$start
     send_response('complete_reply', request, 'shell', list(
         matches = as.list(comps),  # make single strings not explode into letters
-        metadata = namedlist(),
+        metadata = metadata,
         status = 'ok',
         cursor_start = start_position,
         cursor_end = start_position + nchar(c.info$token)))
